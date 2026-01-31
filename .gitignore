@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/PqcResearchVisualizer/results/PqcResearchApp.Benchmarks.KemBenchmarks.csv.log
+/PqcResearchVisualizer/results/PqcResearchApp.Benchmarks.SignatureBenchmarks.csv.log
