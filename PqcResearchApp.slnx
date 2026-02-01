@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="PqcResearchApp/PqcResearchApp.csproj" />
   <Project Path="PqcResearchVisualizer/PqcResearchVisualizer.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52" Id="30d6a0e0-61a2-4a97-b5c3-077dd9a479b1">
     <Build Project="false" />
