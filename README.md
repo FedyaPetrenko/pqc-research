@@ -8,14 +8,17 @@ This solution contains **2 integrated applications** that explore the performanc
 
 ### Applications
 
-#### 1. **PqcResearchApp** (Main Console Application)
+#### 1. **PqcResearchApp** (Main Console Application - C#/.NET 10)
 The primary research application that performs two types of analysis:
 
 - **Artifact Size Analysis**: Measures network overhead by comparing cryptographic artifact sizes (public keys, private keys, ciphertexts, signatures) across algorithms
-- **Performance Benchmarks**: Executes detailed speed and memory consumption benchmarks using BenchmarkDotNet
+- **Performance Benchmarks**: Executes detailed speed and memory consumption benchmarks using BenchmarkDotNet, producing structured JSON results
 
-#### 2. **Benchmarks Project**
-Dedicated benchmarking suite using BenchmarkDotNet for rigorous performance testing and profiling.
+#### 2. **PQC Visualizer** (Python-based Analytics & Reporting)
+A companion Python application that:
+
+- **Parses BenchmarkDotNet Results**: Reads output from the C# benchmarks
+- **Generates Visualizations**: Creates publication-ready charts comparing algorithm performance (latency, throughput, memory)
 
 ---
 
@@ -41,15 +44,15 @@ Dedicated benchmarking suite using BenchmarkDotNet for rigorous performance test
 
 ---
 
-## Project Structure
-
----
-
 ## Requirements
 
+### .NET Application
 - **.NET 10** or later
 - **Windows 11 24H2** or later (for PQC hardware support)
 - Visual Studio 2026 or compatible IDE
+
+### Python Visualizer
+- **Python 3.10** or later
 
 > **Note**: PQC algorithms require specific OS/hardware support. The application will throw `PlatformNotSupportedException` if running on unsupported platforms.
 
@@ -59,21 +62,14 @@ Dedicated benchmarking suite using BenchmarkDotNet for rigorous performance test
 
 ### 1. Clone the Repository
 
-### 2. Build the Solution
+### 2. Build and Run the .NET Application
 
-### 3. Run the Application
+### 3. Generate and Visualize Benchmark Results
 
-### Expected Output
-The application executes in two phases:
-
-**Phase 1: Artifact Size Analysis**
-
-**Phase 2: Performance Benchmarks**
-- Throughput (ops/sec)
-- Memory allocations
-- Latency comparisons
-
----
+The visualizer will:
+- Parse the latest BenchmarkDotNet results from the C# application
+- Generate comparison charts (PNG/SVG)
+- Save results
 
 ## Research Findings
 
@@ -96,22 +92,6 @@ This project demonstrates:
 | `RsaService` | Classical baseline | RSA-4096 for comparison |
 | `EccKemService` | ECC encapsulation | P-256 curve baseline |
 
-### Artifact Export
-All cryptographic materials can be exported in standard formats:
-- **Public Keys**: SubjectPublicKeyInfo (SPKI)
-- **Private Keys**: PKCS#8 format
-- **Ciphertexts/Signatures**: Raw byte arrays
-
----
-
-## Performance Metrics
-
-The benchmarks measure:
-- **Latency**: Time per operation (ms/op)
-- **Throughput**: Operations per second
-- **Memory**: Allocated bytes and GC pressure
-- **Gen 2 Collections**: Garbage collection efficiency
-
 ---
 
 ## References
@@ -120,8 +100,3 @@ The benchmarks measure:
 - [ML-KEM (Kyber) Specification](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf)
 - [ML-DSA (Dilithium) Specification](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf)
 - [.NET 10 Cryptography APIs](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography)
-
----
-
-**Last Updated**: February 2026  
-**Target Framework**: .NET 10
