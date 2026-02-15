@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
 
 namespace PqcResearchApp.PqcAlgorithms;
 
@@ -63,6 +64,7 @@ public class MlDsaService : IDisposable
     /// then prints their sizes (in bytes) along with the size of a signature produced for a
     /// 32-byte zeroed buffer. Intended for informational and benchmarking output.
     /// </remarks>
+    [Experimental("SYSLIB5006")]
     public void PrintDetails()
     {
         var publicKeyInfo = _dsaKey.ExportSubjectPublicKeyInfo();

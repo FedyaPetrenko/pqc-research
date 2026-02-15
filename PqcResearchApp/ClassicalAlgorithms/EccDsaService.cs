@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace PqcResearchApp.RegularAlgorithms;
+namespace PqcResearchApp.ClassicalAlgorithms;
 
 /// <summary>
 /// Provides a small wrapper around the platform <see cref="ECDsa"/> implementation using the NIST P-384 curve.
@@ -62,9 +62,14 @@ public class EccDsaService : IDisposable
     /// </remarks>
     public void PrintDetails()
     {
-        var pk = _ecdsa.ExportSubjectPublicKeyInfo();
+        var publicKey = _ecdsa.ExportSubjectPublicKeyInfo();
+        var privateKey = _ecdsa.ExportPkcs8PrivateKey();
+
         var sign = Sign(new byte[32]);
-        Console.WriteLine($"[Native] ECC-P384 (Sig) | Public Key: {pk.Length} B | Signature: {sign.Length} B");
+        Console.WriteLine($"[Native] ECC-P384 (Sig) |" +
+                          $" Public Key: {publicKey.Length} B |" +
+                          $" Private Key: {privateKey.Length} B |" +
+                          $" Signature: {sign.Length} B");
     }
 
     /// <summary>

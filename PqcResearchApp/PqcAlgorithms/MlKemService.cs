@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
 
 namespace PqcResearchApp.PqcAlgorithms;
 
@@ -57,10 +58,10 @@ public class MlKemService : IDisposable
     /// - <c>ciphertext</c>: the encapsulated ciphertext to send to the holder of the private key,
     /// - <c>sharedSecret</c>: the derived shared secret bytes.
     /// </returns>
-    public (byte[] ciphertext, byte[] sharedSecret) Encapsulate()
+    public (byte[] sharedSecret, byte[] ciphertext) Encapsulate()
     {
         _kemKey.Encapsulate(out var ciphertext, out var sharedSecret );
-        return (ciphertext, sharedSecret);
+        return (sharedSecret, ciphertext);
     }
 
     /// <summary>
@@ -83,13 +84,14 @@ public class MlKemService : IDisposable
     /// <remarks>
     /// Intended for simple diagnostic output to observe artifact sizes for the configured algorithm.
     /// </remarks>
+    [Experimental("SYSLIB5006")]
     public void PrintArtifactSizes()
     {
         var publicKeyInfo = _kemKey.ExportSubjectPublicKeyInfo();
 
         var privateKey = _kemKey.ExportPkcs8PrivateKey();
 
-        var (ciphertext, _) = Encapsulate();
+        var (_, ciphertext) = Encapsulate();
 
         Console.WriteLine($"[Native .NET 10] ML-KEM-768 | " +
                           $"Public Key: {publicKeyInfo.Length} B | " +

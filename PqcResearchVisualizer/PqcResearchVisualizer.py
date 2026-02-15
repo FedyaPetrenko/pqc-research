@@ -7,7 +7,7 @@ import os
 # --- Configuration ---
 RESULTS_DIR = './results'
 OUTPUT_DIR = '.'
-DPI = 300  # High resolution for publication
+DPI = 300  # Висока роздільна здатність для друку
 SNS_THEME = "whitegrid"
 FONT_SCALE = 1.1
 
@@ -20,30 +20,24 @@ def parse_benchmark_log(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Find the table header
     match = re.search(r'\|\s*Method\s*\|.*', content)
     if not match:
         return pd.DataFrame()
 
-    # Extract lines starting from header
     lines = content[match.start():].split('\n')
     table_lines = []
     
-    # Simple state machine to capture table rows
     capture = True
     for line in lines:
         stripped = line.strip()
         if not stripped: continue
         
         if stripped.startswith('|'):
-            # Stop if we hit a separator line after data (usually not needed if we check format)
             if '---' in stripped: continue 
             table_lines.append(stripped)
         elif capture and len(table_lines) > 0:
-            # Stop capturing when we hit a non-table line
             break
 
-    # Parse CSV-like structure
     headers = [h.strip() for h in table_lines[0].strip('|').split('|')]
     data = []
     
@@ -55,45 +49,53 @@ def parse_benchmark_log(file_path):
     df = pd.DataFrame(data)
 
     # --- Data Cleaning & Conversion ---
-    
     def parse_value(val):
-        """Converts strings like '524,049.09 μs' to float (microseconds)"""
         if not val or val == '-': return 0.0
         val = val.replace(',', '')
-        
-        # Regex to find number and unit
         m = re.match(r'([\d\.]+)\s*([a-zA-Zμ]+)', val)
         if not m: return 0.0
         
         num = float(m.group(1))
         unit = m.group(2)
         
-        # Normalize time to microseconds (μs)
         if unit == 'ns': return num / 1000
         if unit in ['μs', 'us']: return num
         if unit == 'ms': return num * 1000
         if unit == 's': return num * 1_000_000
         
-        # Normalize memory to Bytes
         if unit == 'B': return num
         if unit == 'KB': return num * 1024
         if unit == 'MB': return num * 1024 * 1024
         
         return num
 
-    # Convert numeric columns
     if 'Mean' in df.columns:
         df['Mean_us'] = df['Mean'].apply(parse_value)
     if 'Allocated' in df.columns:
         df['Allocated_B'] = df['Allocated'].apply(parse_value)
 
-    # Clean Method Names: "SignatureBenchmarks.RSA-4096 KeyGen" -> "RSA-4096 KeyGen"
+    # Clean Method Names
     df['Method'] = df['Method'].apply(lambda x: x.split('.')[-1].replace("'", ""))
     
-    # Split into Algorithm and Operation
-    # Assumes format "AlgoName Operation" (e.g., "RSA-4096 KeyGen")
-    df['Algorithm'] = df['Method'].apply(lambda x: x.rsplit(' ', 1)[0])
-    df['Operation'] = df['Method'].apply(lambda x: x.rsplit(' ', 1)[1])
+    # --- ТУТ ГОЛОВНА ЗМІНА: ПЕРЕКЛАД ОПЕРАЦІЙ ---
+    
+    # 1. Витягуємо назву алгоритму (все до останнього пробілу)
+    df['Алгоритм'] = df['Method'].apply(lambda x: x.rsplit(' ', 1)[0])
+    
+    # 2. Витягуємо англійську назву операції
+    raw_ops = df['Method'].apply(lambda x: x.rsplit(' ', 1)[1])
+    
+    # 3. Словник перекладу
+    op_map = {
+        'KeyGen': 'Генерація ключів',
+        'Encap': 'Інкапсуляція',
+        'Decap': 'Декапсуляція',
+        'Sign': 'Підпис',
+        'Verify': 'Перевірка'
+    }
+    
+    # 4. Застосовуємо переклад (якщо слова немає в словнику, залишається як є)
+    df['Операція'] = raw_ops.map(op_map).fillna(raw_ops)
     
     return df
 
@@ -108,7 +110,6 @@ def parse_artifact_sizes(file_path):
         for line in f:
             if not line.strip() or line.startswith('-'): continue
             
-            # Remove [Tags]
             clean_line = re.sub(r'\[.*?\]\s*', '', line).strip()
             parts = clean_line.split('|')
             
@@ -118,21 +119,20 @@ def parse_artifact_sizes(file_path):
                 if ':' not in p: continue
                 k, v = p.split(':')
                 
-                # Parse "1206 B"
                 size_match = re.search(r'(\d+)', v)
                 if size_match:
                     size = int(size_match.group(1))
                     
-                    # Normalize type names
                     t_name = k.strip()
-                    if 'Pub' in t_name: t_name = 'Public Key'
-                    elif 'Priv' in t_name: t_name = 'Private Key'
-                    elif 'Sig' in t_name: t_name = 'Signature'
-                    elif 'Cipher' in t_name: t_name = 'Ciphertext'
+                    # Переклад типів об'єктів для графіка артефактів
+                    if 'Pub' in t_name: t_name = 'Публічний ключ'
+                    elif 'Priv' in t_name: t_name = 'Приватний ключ'
+                    elif 'Sig' in t_name: t_name = 'Підпис'
+                    elif 'Cipher' in t_name: t_name = 'Шифротекст'
                     
                     data.append({
-                        'Algorithm': algo_name,
-                        'Type': t_name,
+                        'Алгоритм': algo_name,
+                        'Тип': t_name,
                         'Size (Bytes)': size
                     })
     return pd.DataFrame(data)
@@ -141,9 +141,10 @@ def plot_bar(df, x, y, hue, title, filename, ylabel, log_scale=False, show_mtu=F
     plt.figure(figsize=(12, 7))
     sns.set_context("notebook", font_scale=FONT_SCALE)
     
-    # Determine Palette
-    palette = "viridis" if "KEM" in title else "magma"
-    if "Artifact" in title: palette = "muted"
+    # Кольорові палітри
+    palette = "viridis" 
+    if "підпис" in title.lower(): palette = "magma"
+    if "об'єктів" in title.lower(): palette = "muted"
 
     ax = sns.barplot(data=df, x=x, y=y, hue=hue, palette=palette, edgecolor=".2")
     
@@ -152,8 +153,8 @@ def plot_bar(df, x, y, hue, title, filename, ylabel, log_scale=False, show_mtu=F
         plt.grid(True, which="minor", axis='y', linestyle='--', alpha=0.3)
     
     if show_mtu:
-        plt.axhline(y=1500, color='red', linestyle='--', linewidth=2, label='Ethernet MTU (1500 B)')
-        plt.legend()
+        plt.axhline(y=1500, color='red', linestyle='--', linewidth=2, label='MTU Ethernet (1500 байт)')
+        plt.legend(title='Алгоритми та межа')
 
     # Add Value Labels
     for container in ax.containers:
@@ -173,13 +174,17 @@ def plot_bar(df, x, y, hue, title, filename, ylabel, log_scale=False, show_mtu=F
 
     plt.title(title, fontsize=16, fontweight='bold', pad=20)
     plt.ylabel(ylabel, fontsize=12)
-    plt.xlabel("")
+    plt.xlabel("") # Прибираємо назву осі X
+    
+    if not show_mtu:
+        plt.legend(title='Алгоритм')
+
     sns.despine()
     plt.tight_layout()
     
     save_path = os.path.join(OUTPUT_DIR, filename)
     plt.savefig(save_path, dpi=DPI)
-    print(f"Generated: {save_path}")
+    print(f"Згенеровано: {save_path}")
     plt.close()
 
 def main():
@@ -193,44 +198,41 @@ def main():
     df_art = parse_artifact_sizes(art_log)
 
     if df_kem.empty or df_sig.empty:
-        print("Error: Could not parse benchmark logs. Check file paths.")
+        print("Помилка: Не вдалося обробити логи тестів.")
         return
 
-    # 2. Generate KEM Charts
-    # Execution Time (Log Scale due to RSA difference)
-    plot_bar(df_kem, x='Operation', y='Mean_us', hue='Algorithm', 
-             title='KEM Performance: Execution Time (Log Scale)', 
+    # 2. Generate KEM Charts (Інкапсуляція ключів)
+    plot_bar(df_kem, x='Операція', y='Mean_us', hue='Алгоритм', 
+             title='Швидкодія алгоритмів інкапсуляції ключів (логарифмічна шкала)', 
              filename='kem_execution_time.png', 
-             ylabel='Time (Microseconds) - Log Scale', 
+             ylabel='Час виконання (мкс)', 
              log_scale=True)
     
-    # Memory Allocation
-    plot_bar(df_kem, x='Operation', y='Allocated_B', hue='Algorithm',
-             title='KEM Memory Allocation',
+    plot_bar(df_kem, x='Операція', y='Allocated_B', hue='Алгоритм',
+             title='Інкапсуляція ключів: виділення пам\'яті',
              filename='kem_memory.png',
-             ylabel='Allocated Memory (Bytes)')
+             ylabel='Обсяг виділеної пам\'яті (байт)')
 
-    # 3. Generate Signature Charts
-    # Execution Time (Log Scale)
-    plot_bar(df_sig, x='Operation', y='Mean_us', hue='Algorithm',
-             title='Digital Signature Performance (Log Scale)',
+    # 3. Generate Signature Charts (Цифровий підпис)
+    plot_bar(df_sig, x='Операція', y='Mean_us', hue='Алгоритм',
+             title='Швидкодія алгоритмів цифрового підпису (логарифмічна шкала)',
              filename='sig_execution_time.png',
-             ylabel='Time (Microseconds) - Log Scale',
+             ylabel='Час виконання (мкс)',
              log_scale=True)
              
-    # Memory Allocation (Filter out zero-allocation Verify methods for cleaner chart)
+    # Фільтруємо нульові значення для Verify, щоб графік був чистішим
     df_sig_mem = df_sig[df_sig['Allocated_B'] > 10] 
-    plot_bar(df_sig_mem, x='Operation', y='Allocated_B', hue='Algorithm',
-             title='Digital Signature Memory Allocation',
+    plot_bar(df_sig_mem, x='Операція', y='Allocated_B', hue='Алгоритм',
+             title='Цифровий підпис: виділення пам\'яті',
              filename='sig_memory.png',
-             ylabel='Allocated Memory (Bytes)')
+             ylabel='Обсяг виділеної пам\'яті (байт)')
 
-    # 4. Generate Artifact Size Chart
+    # 4. Generate Artifact Size Chart (Розміри об'єктів)
     if not df_art.empty:
-        plot_bar(df_art, x='Type', y='Size (Bytes)', hue='Algorithm',
-                 title='Cryptographic Artifact Sizes (Log Scale)',
+        plot_bar(df_art, x='Тип', y='Size (Bytes)', hue='Алгоритм',
+                 title='Розміри криптографічних об\'єктів (логарифмічна шкала)',
                  filename='artifact_sizes.png',
-                 ylabel='Size (Bytes) - Log Scale',
+                 ylabel='Розмір (байти)',
                  log_scale=True,
                  show_mtu=True)
 

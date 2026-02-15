@@ -1,6 +1,6 @@
-[Native] RSA-4096 | Public Key: 550 B | Private Key: 2374 B | Signature: 512 B
-[Native] ECC-P256 (KEM) | Public Key: 91 B
-[Native] ECC-P384 (Sig) | Public Key: 120 B | Signature: 96 B
+[Native] RSA-4096 | Public Key: 550 B | Private Key: 2374 B | Signature: 512 B | Ciphertext: 512 B
+[Native] ECC-P256 (KEM) | Public Key: 91 B | Private Key: 138 B | Ciphertext: 91 B
+[Native] ECC-P384 (Sig) | Public Key: 120 B | Private Key: 185 B | Signature: 96 B
 -----------------------------------------------------
 [Native .NET 10] ML-KEM-768 | Public Key: 1206 B | Private Key: 86 B | Ciphertext: 1088 B
 [Native .NET 10] ML-DSA-65  | PubKey: 1974 B | PrivKey: 54 B | Signature: 3309 B

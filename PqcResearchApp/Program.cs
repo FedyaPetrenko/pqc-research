@@ -3,8 +3,8 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
 using PqcResearchApp.Benchmarks;
+using PqcResearchApp.ClassicalAlgorithms;
 using PqcResearchApp.PqcAlgorithms;
-using PqcResearchApp.RegularAlgorithms;
 
 namespace PqcResearchApp;
 

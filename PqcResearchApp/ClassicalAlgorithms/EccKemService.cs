@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace PqcResearchApp.RegularAlgorithms;
+namespace PqcResearchApp.ClassicalAlgorithms;
 
 /// <summary>
 /// Lightweight helper that demonstrates an ECC-based KEM-style workflow using
@@ -9,11 +9,6 @@ namespace PqcResearchApp.RegularAlgorithms;
 /// <remarks>
 /// This class is intended for benchmarking and demonstration purposes only:
 /// - It uses the platform <see cref="ECDiffieHellman"/> implementation (P-256).
-/// - The <see cref="SharedSecret"/> method derives raw key material via ECDH; in real
-///   applications you must run the derived secret through a suitable KDF and associated
-///   context binding before use.
-/// - This is not a fully specified KEM (no standardized encapsulation/decapsulation
-///   format, no integrity or key confirmation). Use a vetted KEM library for production.
 /// </remarks>
 public class EccKemService : IDisposable
 {
@@ -33,28 +28,52 @@ public class EccKemService : IDisposable
     {
         // Simulate generating a fresh ephemeral key
         using var temp = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
-        _ = temp.PublicKey;
     }
 
     /// <summary>
-    /// Derives a shared secret using the service's ECDH key pair.
+    /// Performs the encapsulation phase of an ECC-based KEM workflow.
     /// </summary>
     /// <returns>
-    /// Raw shared secret bytes as returned by <see cref="ECDiffieHellman.DeriveKeyMaterial(ECDiffieHellmanPublicKey)"/>.
+    /// A tuple containing:
+    /// <list type="bullet">
+    /// <item><description>SharedSecret: The raw ECDH-derived key material.</description></item>
+    /// <item><description>Ciphertext: The ephemeral public key in SubjectPublicKeyInfo format.</description></item>
+    /// </list>
     /// </returns>
     /// <remarks>
-    /// For benchmarking this method derives a secret against the instance's own public key,
-    /// measuring the mathematical cost of key agreement. In real protocols the peer's
-    /// public key would be supplied instead.
+    /// This method creates a fresh ephemeral key pair, derives a shared secret via ECDH
+    /// with the receiver's public key, and encapsulates the ephemeral public key as the
+    /// ciphertext. The shared secret should be passed through a KDF before use in production.
     /// </remarks>
-    /// <exception cref="CryptographicException">
-    /// Thrown if key agreement fails or the underlying provider reports an error.
-    /// </exception>
-    public byte[] SharedSecret()
+    public (byte[] SharedSecret, byte[] Ciphertext) Encapsulate()
     {
-        // Simulate "Encapsulate": Derive a shared secret from the peer's public key.
-        // In a benchmark, we can derive against our own public key to measure the math overhead.
-        return _ecdh.DeriveKeyMaterial(_ecdh.PublicKey);
+        using var ephemeralEcdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+
+        var sharedSecret = ephemeralEcdh.DeriveKeyMaterial(_ecdh.PublicKey);
+        var ciphertext = ephemeralEcdh.PublicKey.ExportSubjectPublicKeyInfo();
+
+        return (sharedSecret, ciphertext);
+    }
+
+    /// <summary>
+    /// Performs the decapsulation phase of an ECC-based KEM workflow.
+    /// </summary>
+    /// <param name="ciphertext">The ephemeral public key in SubjectPublicKeyInfo format.</param>
+    /// <returns>The raw ECDH-derived key material shared with the encapsulation peer.</returns>
+    /// <remarks>
+    /// This method reconstructs the ephemeral public key from the ciphertext,
+    /// derives a shared secret via ECDH using the service's static private key,
+    /// and the ephemeral public key. The shared secret should be passed through a KDF
+    /// before use in production.
+    /// </remarks>
+    public byte[] Decapsulate(byte[] ciphertext)
+    {
+        using var ephemeralEcdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        ephemeralEcdh.ImportSubjectPublicKeyInfo(ciphertext, out _);
+
+        var sharedSecret = _ecdh.DeriveKeyMaterial(ephemeralEcdh.PublicKey);
+
+        return sharedSecret;
     }
 
     /// <summary>
@@ -67,7 +86,14 @@ public class EccKemService : IDisposable
     public void PrintDetails()
     {
         var pk = _ecdh.PublicKey.ExportSubjectPublicKeyInfo();
-        Console.WriteLine($"[Native] ECC-P256 (KEM) | Public Key: {pk.Length} B");
+        var sk = _ecdh.ExportPkcs8PrivateKey();
+
+        var (_, ciphertext) = Encapsulate();
+
+        Console.WriteLine($"[Native] ECC-P256 (KEM) |" +
+                          $" Public Key: {pk.Length} B |" +
+                          $" Private Key: {sk.Length} B |" +
+                          $" Ciphertext: {ciphertext.Length} B");
     }
 
     /// <summary>

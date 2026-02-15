@@ -1,6 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
+using PqcResearchApp.ClassicalAlgorithms;
 using PqcResearchApp.PqcAlgorithms;
-using PqcResearchApp.RegularAlgorithms;
 
 namespace PqcResearchApp.Benchmarks
 {

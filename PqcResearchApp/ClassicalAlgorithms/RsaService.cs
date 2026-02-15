@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace PqcResearchApp.RegularAlgorithms
+namespace PqcResearchApp.ClassicalAlgorithms
 {
     /// <summary>
     /// Lightweight wrapper around the framework's <see cref="RSA"/> implementation that
@@ -37,7 +37,7 @@ namespace PqcResearchApp.RegularAlgorithms
         public void GenerateKey()
         {
             using var tempRsa = RSA.Create(_keySize);
-            var parameters = tempRsa.ExportParameters(false);
+            _ = tempRsa.ExportParameters(false); // Force generation of public parameters
         }
 
         /// <summary>
@@ -50,6 +50,18 @@ namespace PqcResearchApp.RegularAlgorithms
         public byte[] Encrypt(byte[] data)
         {
             return _rsa.Encrypt(data, RSAEncryptionPadding.OaepSHA256);
+        }
+
+        /// <summary>
+        /// Decrypts the provided ciphertext using RSA with OAEP padding and SHA-256.
+        /// </summary>
+        /// <param name="ciphertext">Ciphertext bytes to decrypt. Must not be null.</param>
+        /// <returns>Plaintext bytes produced by the decryption operation.</returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="ciphertext"/> is null.</exception>
+        /// <exception cref="CryptographicException">If the decryption operation fails.</exception>
+        public byte[] Decrypt(byte[] ciphertext)
+        {
+            return _rsa.Decrypt(ciphertext, RSAEncryptionPadding.OaepSHA256);
         }
 
         /// <summary>
@@ -92,12 +104,18 @@ namespace PqcResearchApp.RegularAlgorithms
         {
             var publicKeyInfo = _rsa.ExportSubjectPublicKeyInfo();
             var privateKey = _rsa.ExportPkcs8PrivateKey();
+
+            // Simulating a 32-byte hash signature
             var sign = Sign(new byte[32]);
+
+            // Simulate KEM (encapsulation): encrypt a 32-byte symmetric key (e.g. AES-256)
+            var ciphertext = Encrypt(new byte[32]);
 
             Console.WriteLine($"[Native] RSA-{_keySize} |" +
                               $" Public Key: {publicKeyInfo.Length} B |" +
                               $" Private Key: {privateKey.Length} B |" +
-                              $" Signature: {sign.Length} B");
+                              $" Signature: {sign.Length} B |" +
+                              $" Ciphertext: {ciphertext.Length} B");
         }
 
         /// <summary>
